@@ -1,5 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+import '../main.dart';
+import '../pages/home.dart';
 import '../services/functions/authFunctions.dart';
+
+// class AuthWrapper extends StatelessWidget {
+//   const AuthWrapper({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       home: Obx(() {
+//         final user = AuthController.to.user.value;
+//
+//         if (user == null) {
+//           return LoginForm();
+//         } else {
+//           return Home();
+//         }
+//       }),
+//     );
+//   }
+// }
+
+
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});

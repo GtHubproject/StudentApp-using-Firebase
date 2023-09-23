@@ -1,3 +1,4 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -5,23 +6,33 @@ import 'package:flutter/services.dart';
 import '../services/functions/firebaseFunctions.dart';
 
 class Home extends StatefulWidget {
-  Home({ Key? key}) : super(key: key);
+  Home({Key? key}) : super(key: key);
 
   @override
   State<Home> createState() => _HomeState();
 }
+
 class _HomeState extends State<Home> {
+  // String? currentUserUID;
 
   String currentStudentName = ''; // Initialize with empty string
   String currentStudentEmail = ''; // Initialize with empty string
   String currentStudentPhoneNumber = ''; // Initialize with empty string
   int currentStudentAge = 0;
 
-//refactore
-  void _showEditDialog(BuildContext context, String uid,String name, String email, String phoneNumber, int age) {
+  @override
+  void initState() {
+    super.initState();
+    // Get the current user's UID
+    // currentUserUID = FirebaseAuth.instance.currentUser?.uid;
+  }
+
+    void _showEditDialog(BuildContext context, String uid,String name, String email, String phoneNumber, int age) {
     showDialog(
+
       context: context,
       builder: (BuildContext context) {
+
         String updatedName = name; // Initialize with current data
         String updatedEmail = email; // Initialize with current data
         String updatedPhoneNumber = phoneNumber; // Initialize with current data
@@ -65,9 +76,9 @@ class _HomeState extends State<Home> {
           ),
           actions: <Widget>[
             ElevatedButton(
-              onPressed: () {
+              onPressed: ()  {
                 // Update the user's information in Firestore using FirestoreServices
-                FirestoreServices.updateUser(uid, {
+                 FirestoreServices.updateUser(uid, {
                   'name': updatedName,
                   'email': updatedEmail,
                   'phoneNumber': updatedPhoneNumber,
@@ -82,100 +93,126 @@ class _HomeState extends State<Home> {
       },
     );
   }
-
-//end dialog box
-
-
+//end dialog
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      // Handle the case when no user is logged in.
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Home'),
+        ),
+        body: Center(
+          child: Text('No user logged in.'),
+        ),
+      );
+    } else {
+      final currentUserUID = currentUser.uid;
+      return Scaffold(
+        appBar: AppBar(
+          actions: [
+            IconButton(
+              onPressed: () async {
+                //await FirebaseAuth.instance.signOut();
+              },
+              icon: const Icon(Icons.notification_add),
+            ),
+            IconButton(
               onPressed: () async {
                 await FirebaseAuth.instance.signOut();
               },
-              icon: const Icon(Icons.logout_rounded))
-        ],
-        title: const Text('Home'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('users').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const CircularProgressIndicator();
-          }
-          if (snapshot.hasError) {
-            return Text('Error: ${snapshot.error}');
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Text('No students found.');
-          }
-          // Extract student data and display it in a ListView.
-          final students = snapshot.data!.docs;
-          return ListView.builder(
-            itemCount: students.length,
-            itemBuilder: (context, index) {
-              final studentData = students[index].data() as Map<String, dynamic>;
-              final studentName = studentData['name'];
-              final studentEmail = studentData['email'];
-              final studentPhoneNumber = studentData['phoneNumber'];
-              final studentAge = studentData['age'];
-              final uid = students[index].id;
+              icon: const Icon(Icons.logout_rounded),
+            )
+          ],
+          title: const Text('Home'),
+        ),
+        body: FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUserUID)
+              .get(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            }
+            if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            }
+            if (!snapshot.hasData || !snapshot.data!.exists) {
+              return const Text('No user data found.');
+            }
 
-              return Dismissible(
-                key: Key(uid),
-                onDismissed: (direction) {
-                  // Implement delete functionality here
-                  FirestoreServices.deleteUser(uid);
-                },
-                background: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 20.0),
-                    child: Icon(
-                      Icons.delete,
-                      color: Colors.white,
+            // Extract user data and display it.
+            final userData = snapshot.data!.data() as Map<String, dynamic>;
+            final studentName = userData['name'];
+            final studentEmail = userData['email'];
+            final studentPhoneNumber = userData['phoneNumber'];
+            final studentAge = userData['age'];
+
+            return Dismissible(
+              key: Key(currentUserUID),
+              onDismissed: (direction) {
+                // Implement delete functionality here
+                FirestoreServices.deleteUser(currentUserUID);
+              },
+              background: Container(
+                color: Colors.red,
+                alignment: Alignment.centerLeft,
+                child: const Padding(
+                  padding: EdgeInsets.only(left: 20.0),
+                  child: Icon(
+                    Icons.delete,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(1),
+                child: Card(
+                  // surfaceTintColor: Colors.orangeAccent,
+                  child: ListTile(
+                    title: Text(studentName),
+
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                       // Text('Email: $studentEmail | Age: $studentAge | Phone: $studentPhoneNumber'),
+                        Text('Age: ${studentAge}',style: TextStyle(fontSize: 15,color: Colors.black),),
+                        Text('Phone: ${studentPhoneNumber}',style: TextStyle(fontSize: 15,color: Colors.black)),
+                        Text('Email: ${studentEmail}',style: TextStyle(fontSize: 15,color: Colors.black)),
+                      ],
+                    ),
+                    leading: CircleAvatar(),
+                    trailing: IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () {
+                        setState(() {
+                          currentStudentName = studentName;
+                          currentStudentEmail = studentEmail;
+                          currentStudentPhoneNumber = studentPhoneNumber;
+                          currentStudentAge = studentAge;
+                        });
+                        _showEditDialog(
+                          context,
+                          currentUserUID,
+                          studentName,
+                          studentEmail,
+                          studentPhoneNumber,
+                          studentAge,
+                        );
+                      },
                     ),
                   ),
                 ),
-                child:   Padding(padding: EdgeInsets.all(12),
-                  child: Card(
-                    shadowColor: Colors.brown,
-                    surfaceTintColor: Colors.orangeAccent,
-                    child: ListTile(
-                      title: Text(studentName),
-                      subtitle: Text('Email: $studentEmail | Age: $studentAge   | Phone: $studentPhoneNumber'),
+              ),
+            );
 
-                      leading: CircleAvatar(
-                       // backgroundImage: NetworkImage(studentImageUrl),
-                      ),
-                      trailing: IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () {
-                          setState(() {
-                            currentStudentName = studentName;
-                            currentStudentEmail = studentEmail;
-                            currentStudentPhoneNumber = studentPhoneNumber;
-                            currentStudentAge = studentAge;
-                          });
-                          _showEditDialog(context, uid,studentName, studentEmail, studentPhoneNumber, studentAge);
-                        },
-                      ),
-                    ),
-                  ),
-                ),//nn mm
-              );
-
-            },
-          );
-        },
-      ),
-
-    );
+            //padd hhhhh
+          },
+        ),
+      );
+    }
   }
 }
-
-
